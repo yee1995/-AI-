@@ -4,7 +4,7 @@ import { extractJsonFromResponse, isTransferRequest, isConversationComplete } fr
 import { generateWorkOrder } from '../work-order/generator';
 import { WorkOrder } from '../work-order/types';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60000 });
 
 export interface CallSession {
   callId: string;
