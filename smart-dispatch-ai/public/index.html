@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工程維護智能派單系統</title>
+  <!-- React + Babel via CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'PingFang TC', 'Hiragino Sans GB', '微軟雅黑', sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a3a5c, #2d6a9f);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header .subtitle { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+    .live-badge {
+      background: #27ae60;
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      padding: 16px 24px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 8px;
+      padding: 12px 20px;
+      min-width: 120px;
+      text-align: center;
+    }
+    .stat-card .label { font-size: 12px; color: #666; margin-bottom: 4px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #1a3a5c; }
+    .stat-card.today .value { color: #2d6a9f; }
+    .stat-card.pending .value { color: #e67e22; }
+    .stat-card.processing .value { color: #9b59b6; }
+    .stat-card.completed .value { color: #27ae60; }
+    .main { padding: 24px; }
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a3a5c;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .refresh-btn {
+      background: #2d6a9f;
+      color: white;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      margin-left: auto;
+    }
+    .refresh-btn:hover { background: #1a3a5c; }
+    .table-wrap {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #1a3a5c; color: white; }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    td {
+      padding: 12px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fbff; }
+    tr.expanded td { background: #eef4fb; }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-new { background: #fff3cd; color: #856404; }
+    .status-processing { background: #d1d5f7; color: #4a4e9c; }
+    .status-completed { background: #d1f7e0; color: #1a7a40; }
+    .case-id { font-family: monospace; font-size: 12px; color: #555; }
+    .expand-btn {
+      background: none;
+      border: 1px solid #2d6a9f;
+      color: #2d6a9f;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .expand-btn:hover { background: #2d6a9f; color: white; }
+    .detail-row td {
+      background: #f4f8fc;
+      padding: 0;
+    }
+    .detail-panel {
+      padding: 16px 24px;
+      border-top: 2px solid #2d6a9f;
+    }
+    .work-order-text {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      margin-bottom: 12px;
+    }
+    .status-select {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 48px;
+      color: #999;
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; }
+    .loading { text-align: center; padding: 32px; color: #999; }
+    .error-msg { color: #c0392b; background: #fde8e8; padding: 12px; border-radius: 6px; margin: 16px 0; }
+    .tag {
+      display: inline-block;
+      background: #e8f4fd;
+      color: #2d6a9f;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      margin-right: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    const STATUS_LABELS = {
+      new: '新建',
+      processing: '處理中',
+      completed: '已完成',
+    };
+
+    const STATUS_CLASS = {
+      new: 'status-new',
+      processing: 'status-processing',
+      completed: 'status-completed',
+    };
+
+    function StatCard({ label, value, cls }) {
+      return (
+        <div className={`stat-card ${cls}`}>
+          <div className="label">{label}</div>
+          <div className="value">{value}</div>
+        </div>
+      );
+    }
+
+    function WorkOrderRow({ order, onStatusChange }) {
+      const [expanded, setExpanded] = useState(false);
+
+      const handleStatus = async (e) => {
+        const newStatus = e.target.value;
+        await fetch(`/api/work-orders/${order.id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus }),
+        });
+        onStatusChange();
+      };
+
+      return (
+        <>
+          <tr className={expanded ? 'expanded' : ''}>
+            <td><span className="case-id">{order.id}</span></td>
+            <td>{order.open_date}</td>
+            <td>{order.situation}</td>
+            <td>{order.contact_method}</td>
+            <td>
+              <span className={`status-badge ${STATUS_CLASS[order.status]}`}>
+                {STATUS_LABELS[order.status]}
+              </span>
+            </td>
+            <td>
+              <button className="expand-btn" onClick={() => setExpanded(!expanded)}>
+                {expanded ? '收起' : '查看'}
+              </button>
+            </td>
+          </tr>
+          {expanded && (
+            <tr className="detail-row">
+              <td colSpan={6}>
+                <div className="detail-panel">
+                  <div className="work-order-text">
+                    {order.formatted_text || `個案編號: ${order.id}\n日期(Open Date): ${order.open_date}\n日期(Ref/ Date): ${order.ref_date}\n聯絡方法: ${order.contact_method}\n情況: ${order.situation}\n街燈編號: ${order.equipment_id}\n詳情: ${order.detail}\n[${order.v_number}]`}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 13, color: '#666' }}>更新狀態：</span>
+                    <select
+                      className="status-select"
+                      value={order.status}
+                      onChange={handleStatus}
+                    >
+                      <option value="new">新建</option>
+                      <option value="processing">處理中</option>
+                      <option value="completed">已完成</option>
+                    </select>
+                    {order.raw_extracted?.equipment_type && (
+                      <span className="tag">{order.raw_extracted.equipment_type}</span>
+                    )}
+                  </div>
+                </div>
+              </td>
+            </tr>
+          )}
+        </>
+      );
+    }
+
+    function App() {
+      const [orders, setOrders] = useState([]);
+      const [stats, setStats] = useState({ total: 0, today: 0, pending: 0, processing: 0, completed: 0 });
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [lastUpdated, setLastUpdated] = useState(null);
+
+      const fetchData = useCallback(async () => {
+        try {
+          const [ordersRes, statsRes] = await Promise.all([
+            fetch('/api/work-orders'),
+            fetch('/api/stats'),
+          ]);
+          const ordersData = await ordersRes.json();
+          const statsData = await statsRes.json();
+          if (ordersData.success) setOrders(ordersData.data);
+          if (statsData.success) setStats(statsData.data);
+          setLastUpdated(new Date().toLocaleTimeString('zh-HK'));
+          setError(null);
+        } catch (err) {
+          setError('無法連接伺服器，請確認系統已啟動。');
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 10000); // Poll every 10s
+        return () => clearInterval(interval);
+      }, [fetchData]);
+
+      return (
+        <div>
+          <div className="header">
+            <div>
+              <h1>工程維護智能派單系統</h1>
+              <div className="subtitle">粵語 AI 智能接線及工單管理平台</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {lastUpdated && (
+                <span style={{ fontSize: 12, opacity: 0.8 }}>
+                  更新時間：{lastUpdated}
+                </span>
+              )}
+              <span className="live-badge">● 實時監控</span>
+            </div>
+          </div>
+
+          <div className="stats-bar">
+            <StatCard label="工單總數" value={stats.total} cls="" />
+            <StatCard label="今日工單" value={stats.today} cls="today" />
+            <StatCard label="待處理" value={stats.pending} cls="pending" />
+            <StatCard label="處理中" value={stats.processing} cls="processing" />
+            <StatCard label="已完成" value={stats.completed} cls="completed" />
+          </div>
+
+          <div className="main">
+            {error && <div className="error-msg">{error}</div>}
+
+            <div className="section-title">
+              工單列表
+              <button className="refresh-btn" onClick={fetchData}>
+                ↻ 刷新
+              </button>
+            </div>
+
+            <div className="table-wrap">
+              {loading ? (
+                <div className="loading">載入中...</div>
+              ) : orders.length === 0 ? (
+                <div className="empty-state">
+                  <div className="icon">📋</div>
+                  <p>暫無工單記錄</p>
+                  <p style={{ fontSize: 13, marginTop: 8, color: '#bbb' }}>
+                    當有來電並成功生成工單後，記錄將顯示於此
+                  </p>
+                </div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>個案編號</th>
+                      <th>開單日期</th>
+                      <th>情況摘要</th>
+                      <th>聯絡電話</th>
+                      <th>狀態</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => (
+                      <WorkOrderRow
+                        key={order.id}
+                        order={order}
+                        onStatusChange={fetchData}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

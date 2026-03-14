@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-scripts/
+data/
+.env
+google-credentials.json
+public/audio/
+*.js.map
